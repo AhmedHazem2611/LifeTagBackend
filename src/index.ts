@@ -20,6 +20,10 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'LifeTag Backend is running perfectly!' });
+});
+
 app.post('/api/verify-pin', async (req, res) => {
   try {
     const { pin } = req.body;
@@ -153,6 +157,10 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}
+
+export default app;
