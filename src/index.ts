@@ -11,15 +11,27 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lifetag';
+const MONGODB_URI = process.env.MONGODB_URI;
 
-app.use(cors());
+if (!MONGODB_URI) {
+  console.error('CRITICAL: MONGODB_URI environment variable is not set!');
+}
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.options('*', cors());
 app.use(express.json());
 
 // Serverless MongoDB Connection Middleware
 app.use(async (req, res, next) => {
   if (mongoose.connection.readyState >= 1) {
     return next();
+  }
+  if (!MONGODB_URI) {
+    return res.status(500).json({ success: false, message: 'Server misconfiguration: MONGODB_URI not set.' });
   }
   try {
     await mongoose.connect(MONGODB_URI);
