@@ -129,10 +129,11 @@ app.post('/api/save-medical-data', async (req, res) => {
            newProfile.age = data.age?.toString() || '';
            newProfile.emergencyContacts = data.emergencyContacts?.map((c: any) => ({ name: c.name, phone: c.phone || 'N/A', type: 'Parent' })) || [];
         } else if (data.templateType === 'Medical' && data.data) {
+           const parseStringToArray = (str: any) => typeof str === 'string' ? str.split(',').map((s: string) => s.trim()).filter(Boolean) : (Array.isArray(str) ? str : []);
            newProfile.bloodType = data.data.bloodType;
-           newProfile.allergies = data.data.allergies ? [data.data.allergies] : [];
-           newProfile.medications = data.data.medications ? [data.data.medications] : [];
-           newProfile.medicalConditions = data.data.conditions ? [data.data.conditions] : [];
+           newProfile.allergies = parseStringToArray(data.data.allergies);
+           newProfile.medications = parseStringToArray(data.data.medications);
+           newProfile.medicalConditions = parseStringToArray(data.data.conditions);
            newProfile.emergencyContacts = data.data.emergencyContacts;
            newProfile.notes = data.data.notes;
         } else if (data.templateType === 'Custom') {
