@@ -11,27 +11,15 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lifetag';
 
-if (!MONGODB_URI) {
-  console.error('CRITICAL: MONGODB_URI environment variable is not set!');
-}
-
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-app.options('*', cors());
+app.use(cors());
 app.use(express.json());
 
 // Serverless MongoDB Connection Middleware
 app.use(async (req, res, next) => {
   if (mongoose.connection.readyState >= 1) {
     return next();
-  }
-  if (!MONGODB_URI) {
-    return res.status(500).json({ success: false, message: 'Server misconfiguration: MONGODB_URI not set.' });
   }
   try {
     await mongoose.connect(MONGODB_URI);
@@ -95,7 +83,12 @@ app.post('/api/signin', async (req, res) => {
 
 app.get('/api/medical-data/:userId', async (req, res) => {
   try {
-     const profile = await Profile.findOne().sort({ _id: -1 }); // Get latest for demo
+     const { userId } = req.params;
+     let profile = null;
+     if (userId && userId !== 'temp-user' && mongoose.Types.ObjectId.isValid(userId)) {
+         profile = await Profile.findOne({ userId }).sort({ _id: -1 });
+     }
+     
      if (profile) {
         res.json({ success: true, data: profile.medicalInfo || profile });
      } else {
@@ -112,7 +105,13 @@ app.post('/api/save-medical-data', async (req, res) => {
 
     // Direct dashboard update (has an _id or full fields)
     if (data._id || (!data.templateType && data.fullName)) {
-       const latest = await Profile.findOne().sort({ _id: -1 });
+       let latest = null;
+       if (data.userId && mongoose.Types.ObjectId.isValid(data.userId)) {
+           latest = await Profile.findOne({ userId: data.userId }).sort({ _id: -1 });
+       } else {
+           latest = await Profile.findOne().sort({ _id: -1 });
+       }
+       
        if (latest) {
           latest.fullName = data.fullName || latest.fullName;
           latest.bloodType = data.bloodType !== undefined ? data.bloodType : latest.bloodType;
@@ -121,6 +120,8 @@ app.post('/api/save-medical-data', async (req, res) => {
           latest.allergies = data.allergies || latest.allergies;
           latest.emergencyContacts = data.emergencyContacts || latest.emergencyContacts;
           latest.notes = data.notes !== undefined ? data.notes : latest.notes;
+          latest.address = data.address !== undefined ? data.address : latest.address;
+          latest.dob = data.dob !== undefined ? data.dob : latest.dob;
           await latest.save();
           return res.json({ success: true, profile: latest });
        } else {
@@ -132,14 +133,16 @@ app.post('/api/save-medical-data', async (req, res) => {
 
     if (data.templateType) {
         const newProfile = new Profile({
+           userId: (data.userId && mongoose.Types.ObjectId.isValid(data.userId)) ? data.userId : undefined,
            templateType: data.templateType,
            fullName: data.fullName || 'Medical Profile',
         });
 
         if (data.templateType === 'Child') {
-           newProfile.allergies = data.notes ? [data.notes] : [];
-           newProfile.age = data.age?.toString() || '';
-           newProfile.emergencyContacts = data.emergencyContacts?.map((c: any) => ({ name: c.name, phone: c.phone || 'N/A', type: 'Parent' })) || [];
+           newProfile.dob = data.dob || '';
+           newProfile.address = data.address || '';
+           newProfile.notes = data.notes || '';
+           newProfile.emergencyContacts = data.emergencyContacts?.map((c: any) => ({ name: c.name, phone: c.phone || 'N/A', type: c.relation || 'Parent' })) || [];
         } else if (data.templateType === 'Medical' && data.data) {
            const parseStringToArray = (str: any) => typeof str === 'string' ? str.split(',').map((s: string) => s.trim()).filter(Boolean) : (Array.isArray(str) ? str : []);
            newProfile.bloodType = data.data.bloodType;
@@ -157,7 +160,12 @@ app.post('/api/save-medical-data', async (req, res) => {
     }
 
     if (data.isPinProtected !== undefined) {
-       const latest = await Profile.findOne().sort({ _id: -1 });
+       let latest = null;
+       if (data.userId && mongoose.Types.ObjectId.isValid(data.userId)) {
+           latest = await Profile.findOne({ userId: data.userId }).sort({ _id: -1 });
+       } else {
+           latest = await Profile.findOne().sort({ _id: -1 });
+       }
        if (latest) {
           latest.isPinProtected = data.isPinProtected;
           if (data.pin) latest.pin = data.pin;
@@ -174,7 +182,13 @@ app.post('/api/save-medical-data', async (req, res) => {
 
 app.get('/api/profile', async (req, res) => {
   try {
-    const profile = await Profile.findOne().sort({ _id: -1 }); // Get latest for demo
+    const { userId } = req.query;
+    let profile = null;
+    if (userId && mongoose.Types.ObjectId.isValid(userId as string)) {
+        profile = await Profile.findOne({ userId }).sort({ _id: -1 });
+    } else {
+        profile = await Profile.findOne().sort({ _id: -1 }); 
+    }
     if (profile) res.json({ success: true, profile });
     else res.status(404).json({ success: false, message: 'Not found' });        
   } catch (error) {
