@@ -122,6 +122,7 @@ app.post('/api/save-medical-data', async (req, res) => {
           latest.notes = data.notes !== undefined ? data.notes : latest.notes;
           latest.address = data.address !== undefined ? data.address : latest.address;
           latest.dob = data.dob !== undefined ? data.dob : latest.dob;
+          latest.customSections = data.customSections || latest.customSections;
           await latest.save();
           return res.json({ success: true, profile: latest });
        } else {
