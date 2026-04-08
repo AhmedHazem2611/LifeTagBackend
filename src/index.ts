@@ -108,8 +108,6 @@ app.post('/api/save-medical-data', async (req, res) => {
        let latest = null;
        if (data.userId && mongoose.Types.ObjectId.isValid(data.userId)) {
            latest = await Profile.findOne({ userId: data.userId }).sort({ _id: -1 });
-       } else {
-           latest = await Profile.findOne().sort({ _id: -1 });
        }
        
        if (latest) {
@@ -164,8 +162,6 @@ app.post('/api/save-medical-data', async (req, res) => {
        let latest = null;
        if (data.userId && mongoose.Types.ObjectId.isValid(data.userId)) {
            latest = await Profile.findOne({ userId: data.userId }).sort({ _id: -1 });
-       } else {
-           latest = await Profile.findOne().sort({ _id: -1 });
        }
        if (latest) {
           latest.isPinProtected = data.isPinProtected;
@@ -187,8 +183,6 @@ app.get('/api/profile', async (req, res) => {
     let profile = null;
     if (userId && mongoose.Types.ObjectId.isValid(userId as string)) {
         profile = await Profile.findOne({ userId }).sort({ _id: -1 });
-    } else {
-        profile = await Profile.findOne().sort({ _id: -1 }); 
     }
     if (profile) res.json({ success: true, profile });
     else res.status(404).json({ success: false, message: 'Not found' });        
